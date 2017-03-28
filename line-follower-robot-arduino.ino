@@ -11,15 +11,14 @@
 // paper and sliding the sensor across it.  It prints the sensor values to the serial 
 // monitor as numbers from 0 (maximum reflectance) to 1023 (minimum reflectance).
 
-#define Kp 0.25 // experiment to determine this, start by something small that just makes your bot follow the line at a slow speed
-#define Kd 1 // experiment to determine this, slowly increase the speeds and adjust this value. ( Note: Kp < Kd) 
+#define Kp 0.1 // experiment to determine this, start by something small that just makes your bot follow the line at a slow speed
+#define Kd 1.5 // experiment to determine this, slowly increase the speeds and adjust this value. ( Note: Kp < Kd) 
 #define rightMaxSpeed           250 // max speed of the robot
 #define leftMaxSpeed            250 // max speed of the robot
-#define rightBaseSpeed          90 // this is the speed at which the motors should spin when the robot is perfectly on the line
-#define leftBaseSpeed           90  // this is the speed at which the motors should spin when the robot is perfectly on the line
-#define TIMEOUT                 2500  // waits for 2500 us for sensor outputs to go low
+#define rightBaseSpeed          200 // this is the speed at which the motors should spin when the robot is perfectly on the line
+#define leftBaseSpeed           200  // this is the speed at which the motors should spin when the robot is perfectly on the line
 #define NUM_SENSORS             8  // number of sensors used
-#define NUM_SAMPLES_PER_SENSOR  16  // average 4 analog samples per sensor reading
+#define NUM_SAMPLES_PER_SENSOR  8  // average 4 analog samples per sensor reading
 #define EMITTER_PIN             2  // emitter is controlled by digital pin 2
 #define RIGHT_SPEED             10 // sağ motor PWM hız kontrol pini.    
 #define LEFT_SPEED              9  // sol motor PWM hız kontrol pini.
@@ -58,8 +57,20 @@ void loop()
   int position = qtra.readLine(sensorValues);
   int error = position - 3500;
 
-  
+  /*
+  for(unsigned char i = 0; i < 8; i ++){
+    Serial.print(i+1);
+    Serial.print(": ");
+    Serial.print(sensorValues[i]);
+    Serial.print("  ");
+    }
+    
+    Serial.println();
+    */
 
+    //Serial.println(position);
+
+    
   int motorSpeed = Kp * error + Kd * (error - lastError);
   lastError = error;
 
