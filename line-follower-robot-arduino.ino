@@ -24,10 +24,6 @@
 #define RIGHT_MOTOR             0
 #define LEFT_MOTOR              1
 
-//********** Mesafe sensörünün kesmesi için **********
-
-#define INTERRUPT_DISTANCE      3
-
 //************** move() fonksiyonu için **************
 
 #define FORWARD                 1
@@ -35,6 +31,11 @@
 #define RIGHT_MOTOR             0
 #define LEFT_MOTOR              1
 
+
+//**************** Mesafe sensörü için ****************
+
+#define trigPin                 12
+#define echoPin                 11
 
 void move(unsigned char selectMotor, unsigned char selectMovement, int selectMotorSpeed);
 void stop();
@@ -48,7 +49,7 @@ unsigned int sensorValues[NUM_SENSORS];
 void setup()
 {
   Serial.begin(9600);
-  delay(2000); // Robot çalışmaya 2 saniye sonra başlar.
+  delay(500); // Robot çalışmaya 2 saniye sonra başlar.
 
   // Motorların ve HC SR04 sensörünün pin durumunun ayarlanması.
   pinMode(RIGHT_MOTOR_SPEED,OUTPUT);
@@ -57,16 +58,68 @@ void setup()
   pinMode(RIGHT_MOTOR_NEGATIVE,OUTPUT);
   pinMode(LEFT_MOTOR_POSITIVE,OUTPUT);
   pinMode(LEFT_MOTOR_NEGATIVE,OUTPUT);
-
-  pinMode(INTERRUPT_DISTANCE, INPUT);
-  //attachInterrupt (digitalPinToInterrupt (INTERRUPT_DISTANCE), stop, LOW);
+  // Mesafe sensörününün pin durumunun ayarlanması.
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
 }
 
 //PID algoritması için son hata değeri tanımlanıyor.
 int lastError = 0;
+long sure, mesafe, counter = 0;
+int leftMotorSpeed, rightMotorSpeed;
 
 void loop()
 {
+  /*
+   * Normalde her döngüde uzaklık sensörünü kontrol ediyorduk, fakat bu durum QTR-8A sensörünün
+   * daha geç kontrol edilmesini sağlıyordu ve robotun yoldan çıkmasına sebep oluyordu. Bu durumu 
+   * engellemek için counter adında bir değişken oluşturuldu. Bu değişken sayesinde robot her 
+   * döngüde değilge 50 döngüde bir uzaklık sensörünü kontrol edecek. Böylece robot daha az
+   * yoldan çıkacak.
+  */
+  if (counter == 50) {
+    // Bu döngüye girildiğinde counter sıfırlanır.
+    counter = 0;
+
+    // Engele olan uzaklık ölçülür.
+    digitalWrite(trigPin, LOW);
+    delayMicroseconds(2);
+    digitalWrite(trigPin, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(trigPin, LOW);
+    sure = pulseIn(echoPin, HIGH);
+    mesafe = (sure/2) / 29.1;
+    //Serial.println(mesafe);
+
+    // Sağ ve sol mottorların hızları 150 yapılır.
+    rightMotorSpeed = 150;
+    leftMotorSpeed = 150;
+
+    // Eğer engele olan uzaklık 30cm 'den küçükse bu döngüye girilir.
+       while (mesafe <= 30){
+        // Motorlar ters yönde 150 hızı ile 200 milisaniye çalıştırılır.
+        move(RIGHT_MOTOR, BACKWARD, leftMotorSpeed);
+        move(LEFT_MOTOR, BACKWARD, rightMotorSpeed);
+        delay(200);
+        // Engele olan uzaklık ölçülür.
+        digitalWrite(trigPin, LOW);
+        delayMicroseconds(2);
+        digitalWrite(trigPin, HIGH);
+        delayMicroseconds(10);
+        digitalWrite(trigPin, LOW);
+        sure = pulseIn(echoPin, HIGH);
+        mesafe = (sure/2) / 29.1;
+        // Daha önce sağ ve sol motorların hızını 150 yapmıştık. Bu döngüde
+        // iken robot geri gitmesin diye motorların hızlarını sıfırlıyoruz.
+        rightMotorSpeed = 0;
+        leftMotorSpeed = 0;
+        
+       }
+  }
+  
+  // Her döngüde counter değişkenini 1 arttırıyoruz.
+  counter++;
+  
   // Tüm sensörleri okur ve okunan değerleri sensorValue[] dizisine atar.
   qtra.read(sensorValues);
 
@@ -86,8 +139,8 @@ void loop()
   lastError = error;
 
   // Sağ ve sol motorun hızları algoritmaya göre düzenlenir.
-  int leftMotorSpeed = baseSpeed + motorSpeed;
-  int rightMotorSpeed = baseSpeed - motorSpeed;
+  leftMotorSpeed = baseSpeed + motorSpeed;
+  rightMotorSpeed = baseSpeed - motorSpeed;
 
   // Buradaki if ifadeleri motor hızlarının -250 ile +250 arasında kalmasını sağlıyor.
   if (leftMotorSpeed > maxSpeed ) 
